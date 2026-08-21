@@ -63,7 +63,8 @@ Playlist *Playlist::create(const QString &url, OpenMode openMode, QString *name)
     if (urlForValidation.startsWith("http") && urlForValidation.endsWith(".m3u8", Qt::CaseInsensitive))
         return nullptr; // Probably HLS
     const QString extension = Functions::fileExt(urlForValidation).toLower();
-
+    if (extension.isEmpty())
+        return nullptr;
     for (Module *module : QMPlay2Core.getPluginsInstance())
         for (const Module::Info &mod : module->getModulesInfo())
             if (mod.type == Module::PLAYLIST && mod.extensions.contains(extension))
@@ -100,41 +101,6 @@ Playlist *Playlist::create(const QString &url, OpenMode openMode, QString *name)
                 }
                 delete playlist;
             }
-    if (openMode == ReadOnly)
-    {
-        for (Module *module : QMPlay2Core.getPluginsInstance())
-        {
-            for (const Module::Info &mod : module->getModulesInfo())
-            {
-                if (mod.type != Module::PLAYLIST || !mod.extensions.contains("m3u"))
-                    continue;
-
-                Playlist *playlist = (Playlist *)module->createInstance(mod.name);
-                if (!playlist)
-                    continue;
-
-                IOController<Reader> &reader = playlist->ioCtrl.toRef<Reader>();
-                if (Reader::create(url, reader) && reader)
-                {
-                    const QByteArray header = reader->read(16);
-                    reader->seek(0);
-
-                    const QByteArray trimmed = header.trimmed();
-
-                    if (trimmed.startsWith("#EXTM3U") ||
-                        trimmed.startsWith("\xEF\xBB\xBF#EXTM3U"))
-                    {
-                        if (name)
-                            *name = mod.name;
-                        return playlist;
-                    }
-                }
-
-                delete playlist;
-            }
-        }
-    }
-            
     return nullptr;
 }
 
