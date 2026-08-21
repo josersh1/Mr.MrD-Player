@@ -32,6 +32,7 @@ Playlist::Entries M3U::read()
     bool hasExtinf = false;
     QString extinf[2];
     QHash<QByteArray, QByteArray> extvlcopt;
+    QHash<QByteArray, QByteArray> kodiprop;
     for (const QByteArray &line : readLines())
     {
         if (line.simplified().isEmpty())
@@ -57,6 +58,15 @@ Playlist::Entries M3U::read()
             }
             extvlcopt[line.mid(11, idx - 11)] = line.right(line.length() - idx - 1);
         }
+        else if (line.startsWith("#KODIPROP:"))
+        {
+            const int idx = line.indexOf('=');
+            if (idx < 0)
+            {
+                continue;
+            }
+            kodiprop[line.mid(10, idx - 10)] = line.right(line.length() - idx - 1);
+        }        
         else if (!line.startsWith("#"))
         {
             Entry entry;
@@ -102,9 +112,12 @@ Playlist::Entries M3U::read()
             // NEW ENTRY ADDED FOR HEADERS
             if (const auto origin = extvlcopt.value("http-origin"); !origin.isEmpty())
                 entry.params[Entry::OriginParam] = origin;
+            for (auto it = kodiprop.cbegin(), itEnd = kodiprop.cend(); it != itEnd; ++it)
+                entry.params[it.key()] = it.value();            
             list += entry;
             hasExtinf = false;
             extvlcopt.clear();
+            kodiprop.clear();
         }
     }
 
